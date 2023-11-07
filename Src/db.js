@@ -1,14 +1,12 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose"); /* importo el módulo de mongoose */
 
-
-
-async function Connection() {
-
-     await mongoose
-     .connect('mongodb+srv://anaislu12:1234@ejemplo.tpneya6.mongodb.net/?retryWrites=true&w=majority')
-
-     .catch((err) => console.log(err));
-
+async function connection() {
+  await mongoose
+    .connect(
+     "mongodb+srv://anaislu12:1234@ejemplo.tpneya6.mongodb.net/?retryWrites=true&w=majority"
+    )
+    .then(console.log("Base de datos Mongo conectada"))
+    .catch((err) => console.log(err));
 }
 
-module.exports = { Connection };
+module.exports = { connection };
