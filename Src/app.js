@@ -1,62 +1,45 @@
-//*-------------------------EXPRESS-------------- */
 
-// /* Conexión y configuración de express */
-const express = require("express"); //importo el modulo de express
-const cors = require("cors"); //importo el modulo de cors
-const app = express(); // lo ejecutamos y guardamos en una variable (guardamos una INSTANCIA de express)
-const port = 3000; // constante del puerto que levantare en el servidor
-//conectamos a mongo---
-require("./db.js"); /* ESTA LINEA ME CONECTA CON MONGO DB */
+const express = require("express");
+const cors = require("cors"); 
+const app = express(); 
+const port = 3000;
+const jwt = require('jsonwebtoken');
+
+
+require("./db.js");
 
 // /* ------MIDDLEWARES (configuraciones express)---------------------------------------------------------- */
-app.use(express.json()); /*--Para aceptar json(body) en mis peticiones http-- */
-app.use(cors()); /* Para aceptar peticiones del front o postman*/
+app.use(express.json());
+app.use(cors()); 
 
-/* -------------------------- */
-// /* Vinculo mis modelos para usar rutas */
-const Ensere = require("./Models/Enseres"); /* Conectamos el model correspondiente */
+
+const Ensere = require("./Models/Enseres");
 const User = require("./Models/Users");
-// /* RUTAS */
+
 
 app.get("/", (req, res) => {
   res.send(
-    " Bienvenido a la api de marketplace de enseres domesticos"
+
   );
 });
 
-app.get("/user", async (req, res) => {
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+
   try {
-    const { email, password } = req.body;
+    const user = await User.findOne({ username });
 
-    //buscar si el mail o usuario existe
-    const userFound = await User.findOne({ email: email })
-
-    if (!userFound) {
-      res.status(400).send("El email ingresado no es correcto");
-    }
-    //comparar la contraseña
-    const matchedPassword = await User.comparePassword(
-      password,
-      userFound.password
-    );
-    if (!matchedPassword) {
-      res.status(400).send("La contraseña ingresada no es correcta");
+    if (!user || !(await user.comparePassword(password))) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    //aca es donde se crea y devuelve el token-----
+    const token = jwt.sign({ username: user.username }, 'secreto', { expiresIn: '1h' });
 
-    res.status(200).json(userFound);
+    res.json({ token });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
-app.post("/ensere", (req, res) => {
-  const name = req.query.name;
-  const nuevoEnsere = Ensere.create({ name: name });
-  res.json("Ensere creado correctamente");
-});
-
 app.post("/user", async (req, res) => {
   const {
     username,
@@ -64,27 +47,26 @@ app.post("/user", async (req, res) => {
     identification_number,
     password,
     phone_number,
-    productos, // ["Roberto", "Esteban"]
+    productos, 
   } = req.body;
   
 
   const productosEncontrados = await Ensere.find({ name: { $in: productos } });
   
 
-  /* crear la instancia del usuario */
+ 
   const user = new User({
     username: username,
     email: email,
     identification_number: identification_number,
-    password: password, //123456 =>cambia por el hash de encryptPassword()
+    password: password,
     phone_number: phone_number,
-    productos: productosEncontrados.map((producto) => producto._id), //=> [new ObjectId("651cb3a8f62c611047c7be57"),new ObjectId("651cb3b5f62c611047c7be59"),]
-  });
+    productos: productosEncontrados.map((producto) => producto._id), });
 
-  /* Debemos encriptar la contraseña */
+  
   user.password = await User.encryptPassword(password);
 
-  /* Guardo en la base de datos */
+  
   const newUser = user.save();
 
   res.status(200).json({
@@ -96,5 +78,5 @@ app.post("/user", async (req, res) => {
 
 });
 
-/* -------------------------------- */
+
 module.exports = { app, port };
