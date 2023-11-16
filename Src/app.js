@@ -1,82 +1,67 @@
-
-const express = require("express");
-const cors = require("cors"); 
-const app = express(); 
-const port = 3000;
+const express = require('express');
+const cors = require('cors');
+const app = express();
+const port = 3001;
 const jwt = require('jsonwebtoken');
-
+const Ensere = require('./Models/Enseres');
+const User = require('./Models/Users');
 
 require("./db.js");
 
-// /* ------MIDDLEWARES (configuraciones express)---------------------------------------------------------- */
 app.use(express.json());
-app.use(cors()); 
-
-
-const Ensere = require("./Models/Enseres");
-const User = require("./Models/Users");
-
+app.use(cors({
+  origin: 'http://localhost:5173',
+}));
 
 app.get("/", (req, res) => {
-  res.send(
-
-  );
+  res.send('Welcome to the server!');
 });
 
 app.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-
-  try {
-    const user = await User.findOne({ username });
-
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
-    }
-
-    const token = jwt.sign({ username: user.username }, 'secreto', { expiresIn: '1h' });
-
-    res.json({ token });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+ 
 });
-app.post("/user", async (req, res) => {
+
+
+app.post("/api/users", async (req, res) => {
   const {
     username,
     email,
     identification_number,
     password,
     phone_number,
-    productos, 
+   
   } = req.body;
-  
 
-  const productosEncontrados = await Ensere.find({ name: { $in: productos } });
-  
-
+  try {
  
-  const user = new User({
-    username: username,
-    email: email,
-    identification_number: identification_number,
-    password: password,
-    phone_number: phone_number,
-    productos: productosEncontrados.map((producto) => producto._id), });
-
-  
-  user.password = await User.encryptPassword(password);
-
-  
-  const newUser = user.save();
-
-  res.status(200).json({
-    _id: newUser._id,
-    username: newUser.username,
-    mail: newUser.email,
-  });
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ error: 'El usuario ya existe' });
+    }
 
 
+    const user = new User({
+      username,
+      email,
+      identification_number,
+      password, 
+      phone_number,
+    
+    });
+
+
+    const newUser = await user.save();
+
+    res.status(201).json({
+      _id: newUser._id,
+      username: newUser.username,
+      mail: newUser.email,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
-
 module.exports = { app, port };
+
+
